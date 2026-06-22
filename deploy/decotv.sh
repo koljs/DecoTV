@@ -17,7 +17,7 @@ APP_DIR="/data/decotv"
 PID_FILE="$APP_DIR/decotv.pid"
 LOG_FILE="$APP_DIR/decotv.log"
 PORT="${DECOTV_PORT:-3000}"
-HOST="${DECOTV_HOST:-127.0.0.1}"
+HOST="${DECOTV_HOST:-0.0.0.0}"
 NODE_ENV="${NODE_ENV:-production}"
 
 # 颜色输出
