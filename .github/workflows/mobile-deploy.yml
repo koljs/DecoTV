@@ -2,12 +2,6 @@ name: Build Mobile Deploy Package
 
 on:
   workflow_dispatch:
-    inputs:
-      build_for_arm:
-        description: '构建 ARM64 部署包 (手机端)'
-        required: false
-        default: true
-        type: boolean
   push:
     branches: [main, master]
     paths-ignore:
@@ -34,13 +28,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -58,17 +50,7 @@ jobs:
           echo "package_name=decotv-${VERSION}-${BUILD_TIMESTAMP}-${COMMIT_SHA}" >> "$GITHUB_OUTPUT"
           echo "Version: v${VERSION}, Build: ${BUILD_TIMESTAMP}, Commit: ${COMMIT_SHA}"
 
-      - name: Build standalone (x86_64)
-        if: ${{ !inputs.build_for_arm }}
-        env:
-          STANDALONE: true
-          BUILD_TIMESTAMP: ${{ steps.version.outputs.timestamp }}
-          GIT_COMMIT_SHA: ${{ github.sha }}
-          GIT_REF_NAME: ${{ github.ref_name }}
-        run: pnpm build
-
-      - name: Build standalone (ARM64 cross-compile)
-        if: ${{ inputs.build_for_arm }}
+      - name: Build standalone
         env:
           STANDALONE: true
           BUILD_TIMESTAMP: ${{ steps.version.outputs.timestamp }}
@@ -136,7 +118,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 查找或创建 nightly release
           RELEASE_TAG="nightly"
           RELEASE_TITLE="DecoTV Nightly Build"
 
@@ -149,13 +130,7 @@ jobs:
               --prerelease
           fi
 
-          # 删除旧资源
-          gh release delete-asset "$RELEASE_TAG" decotv-*.tar.gz --repo "${{ github.repository }}" 2>/dev/null || true
-          gh release delete-asset "$RELEASE_TAG" install.sh --repo "${{ github.repository }}" 2>/dev/null || true
-          gh release delete-asset "$RELEASE_TAG" decotv.sh --repo "${{ github.repository }}" 2>/dev/null || true
-          gh release delete-asset "$RELEASE_TAG" operit-watchdog.sh --repo "${{ github.repository }}" 2>/dev/null || true
-
-          # 上传新资源
+          # 上传新资源 (--clobber 自动覆盖旧文件)
           gh release upload "$RELEASE_TAG" \
             decotv-*.tar.gz \
             install.sh \
@@ -176,15 +151,13 @@ jobs:
           - 时间: ${BUILD_TIMESTAMP}
 
           ## 手机端部署 (Operit chroot)
-          1. 下载 \`decotv-*.tar.gz\`、\`install.sh\`、\`decotv.sh\`、\`operit-watchdog.sh\`
-          2. 传输到手机: \`adb push decotv-*.tar.gz /sdcard/Download/\`
+          1. 下载 decotv-*.tar.gz、install.sh、decotv.sh、operit-watchdog.sh
+          2. 传输到手机: adb push decotv-*.tar.gz /sdcard/Download/
           3. Operit Ubuntu 终端中:
-             \`\`\`bash
              cd /root
              tar -xzf /sdcard/Download/decotv-*.tar.gz
              bash install.sh
-             \`\`\`
-          4. 启动: \`/data/decotv/decotv.sh start\`
+          4. 启动: /data/decotv/decotv.sh start
           5. 访问: http://127.0.0.1:3000"
 
           echo "Nightly release updated successfully"
